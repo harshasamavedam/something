@@ -6,13 +6,18 @@ from sqlalchemy import create_engine
 import pandas as pd
 from datetime import datetime as dt
 from selenium.webdriver.support.ui import WebDriverWait as WAIT
+import openpyxl
+
+
+name=("wrogn_products"+str(dt.now().date()))
+raw_data=pd.DataFrame()
 
 # import py
 def wrogn_extract_raw():
     options = webdriver.ChromeOptions()
     options.add_argument('--headless')  # Run in headless mode
 
-    drive=webdriver.Chrome()
+    drive=webdriver.Chrome(options=options)
     drive.get('https://wrogn.com/collections/view-all')
     time.sleep(5)  # Wait for the page to load
     drive.maximize_window()
@@ -77,14 +82,16 @@ def wrogn_extract_raw():
     # print(df)
     print(f'no_of_itterations happend {cn}')
     print(f"product extraction_done creating connection to data base at {time.ctime()}")
-    try:
-        engine = create_engine("mysql+pymysql://my_user:my_password@localhost:3306/my_database")
-        print("connection_estrablisehed")
-        df.to_sql('wrogn_products',con=engine,if_exists='append',index=False)
-        print("data inserted into the database")   
-    except Exception as e:
-        print(e)
-
+    return df
+    # try:
+    #     engine = create_engine("mysql+pymysql://my_user:my_password@localhost:3306/my_database")
+    #     print("connection_estrablisehed")
+    #     df.to_sql('wrogn_products',con=engine,if_exists='append',index=False)
+    #     print("data inserted into the database")   
+    # except Exception as e:
+    #     print(e)
+    
+   
 def price_range_det(x):
     if x>0 and x<500:
         return '0-499'
@@ -106,18 +113,20 @@ def price_range_det(x):
         return '10000+'
 
 
-def raw_to_gold():
+def raw_to_gold(df):
+    print("raw data to gold data conversion started")
     try:
-        engine = create_engine("mysql+pymysql://my_user:my_password@localhost:3306/my_database")
-        print("connection_estrablisehed")
-        df = pd.read_sql_table('wrogn_products', con=engine)
         df['color']=df['product_name'].str.split("|").apply(lambda x:x[1] if len(x[1:])>0 else 'no_color')
         df['type']=df['product_name'].str.split("|").apply(lambda x:x[0] if len(x)>0 else 'no_type')
         df['product_styp']=df['type'].str.split(" ").apply(lambda x: x[-1] if len(x[-1])>0 else (x[-2] if len(x)>0 and len(x[-2])>0 else 'unappor') )
         df['price']=df['product_price'].apply(lambda x: re.findall(r'\d+', x.replace(',',""))[0] if len(re.findall(r'\d+', x))>0 else '0').astype(int)
-        df['price_range']=df['price'].apply(lambda x:price_range_det(x) if x>0 else'no_price_detected')
-        df.to_sql('wrogn_products_gold', con=engine, if_exists='replace', index=False)
-        print("data inserted into the gold table")
+        df['price_range']=df['price'].apply(lambda x:price_range_det(x) if x>0 else'no_price_detected') 
+        print("raw data to gold data conversion done")
+        return df.copy()
         
     except Exception as e:
         print(e)
+
+        if __name__ == "__main__":
+            raw_data=wrogn_extract_raw()
+            gold_data=raw_to_gold(raw_data)
