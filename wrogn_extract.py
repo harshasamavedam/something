@@ -7,10 +7,13 @@ import pandas as pd
 from datetime import datetime as dt
 from selenium.webdriver.support.ui import WebDriverWait as WAIT
 import openpyxl
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 
 name=("wrogn_products"+str(dt.now().date()))
 raw_data=pd.DataFrame()
+
 
 # import py
 def wrogn_extract_raw():
@@ -19,8 +22,28 @@ def wrogn_extract_raw():
 
     drive=webdriver.Chrome(options=options)
     drive.get('https://wrogn.com/collections/view-all')
-    time.sleep(5)  # Wait for the page to load
+    time.sleep(15)  # Wait for the page to load
     drive.maximize_window()
+    print("page loaded")
+    try:
+    # First switch to the popup iframe
+        WebDriverWait(drive, 10).until(
+            EC.frame_to_be_available_and_switch_to_it((by.CSS_SELECTOR, "iframe#iframe-kp"))
+        )
+        print("Switched to popup iframe.")
+
+        # Now wait for and click the close button inside iframe
+        close_btn = WebDriverWait(drive, 10).until(
+            EC.element_to_be_clickable((by.ID, "close_button"))
+        )
+        close_btn.click()
+        print("Popup closed.")
+
+        # Important: switch back to main page
+        drive.switch_to.default_content()
+
+    except Exception as e:
+        print("Popup not found or failed to close:", e)
 
     start=0
     coun=0
